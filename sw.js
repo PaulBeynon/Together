@@ -1,4 +1,4 @@
-const CACHE = 'together-v2';
+const CACHE = 'together-v3';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', e => {
@@ -16,6 +16,17 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+
+  // Only intercept same-origin GET requests. Cross-origin calls (the
+  // togetherChat Cloud Function, fonts, etc.) and non-GET requests
+  // (POST/PUT) are left completely alone — Safari's service worker
+  // implementation can fail ("Load failed") when it tries to handle
+  // those, so it's safest to never touch them.
+  if(url.origin !== self.location.origin || e.request.method !== 'GET'){
+    return;
+  }
+
   const isPage = e.request.mode === 'navigate' || e.request.destination === 'document';
 
   if(isPage){
