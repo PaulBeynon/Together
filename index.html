@@ -204,6 +204,42 @@
   .support-row{display:flex; gap:12px; align-items:flex-start;}
   .support .emoji{font-size:24px; flex-shrink:0; margin-top:2px;}
 
+  /* ---- workout ---- */
+  .week-pill-row{display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:6px;}
+  .week-pill{
+    flex-shrink:0; padding:8px 14px; border-radius:20px; font-size:13px; font-weight:600;
+    background:rgba(255,255,255,0.5); white-space:nowrap;
+  }
+  .week-pill.current{background:var(--coral); color:#fff;}
+
+  .day-row{
+    display:flex; align-items:center; gap:12px; padding:12px 0;
+    border-top:1px solid rgba(0,0,0,0.08);
+  }
+  .day-row:first-of-type{border-top:none;}
+  .day-row .d-name{width:38px; font-size:13px; font-weight:700; opacity:.6; flex-shrink:0;}
+  .day-row .d-body{flex:1; font-size:14px;}
+  .day-row.today{background:rgba(232,121,90,0.1); margin:0 -22px; padding:12px 22px; border-radius:12px; border-top:none;}
+  .day-row.today .d-name{color:var(--coral);}
+
+  .exercise-row{
+    display:flex; align-items:center; gap:12px; padding:11px 0;
+    border-top:1px solid rgba(0,0,0,0.08);
+  }
+  .exercise-row:first-of-type{border-top:none;}
+  .exercise-check{
+    width:22px; height:22px; border-radius:7px; border:2px solid rgba(0,0,0,0.2);
+    flex-shrink:0; cursor:pointer; background:rgba(255,255,255,0.5);
+    display:flex; align-items:center; justify-content:center; font-size:13px; color:#fff;
+  }
+  .exercise-check.checked{background:var(--sage); border-color:var(--sage);}
+  .exercise-label{font-size:14px; flex:1;}
+  .exercise-label.checked{opacity:.5; text-decoration:line-through;}
+
+  .rest-day{
+    text-align:center; padding:30px 20px; opacity:.6; font-style:italic; font-size:15px;
+  }
+
   /* ---- week view ---- */
   .week-grid{display:flex; gap:8px; margin-top:16px;}
   .week-day{
@@ -277,12 +313,24 @@
     </div>
   </div>
 
+  <!-- WORKOUT -->
+  <div class="screen" id="screen-workout">
+    <header class="top">
+      <span class="eyebrow" id="workoutWeekLabel">—</span>
+      <h1 class="greeting" id="workoutGreeting">Training</h1>
+      <p class="subline">10-week dumbbell &amp; running plan.</p>
+    </header>
+    <div id="workoutTodayHost"></div>
+    <div id="workoutWeekHost"></div>
+  </div>
+
 </div>
 
 <nav class="tabs">
   <div class="tabs-inner">
     <button class="tab-btn active" data-screen="today">Today</button>
     <button class="tab-btn" data-screen="week">Week</button>
+    <button class="tab-btn" data-screen="workout">Workout</button>
   </div>
 </nav>
 
@@ -721,8 +769,144 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.classList.add('active');
     document.getElementById('screen-'+btn.dataset.screen).classList.add('active');
     if(btn.dataset.screen === 'week') renderWeek();
+    if(btn.dataset.screen === 'workout') renderWorkout();
   };
 });
+
+/* =========================================================
+   WORKOUT PLAN — 10-week dumbbell + bench + running/rowing
+   plan, imported from the plan built in a separate chat.
+   Stored fully client-side; no Firebase yet.
+   ========================================================= */
+const WORKOUT_START = '2026-08-17'; // Monday, week 1 day 1
+
+const WORKOUT_WEEKS = [
+  { monRun:'5KM (easy)',   satRun:'8KM (easy)',  row:'Standard 30 min' },
+  { monRun:'5.5KM (easy)', satRun:'8.5KM (easy)', row:'Interval' },
+  { monRun:'6KM (easy)',   satRun:'9KM (easy)',  row:'Standard 30 min' },
+  { monRun:'6.5KM (easy)', satRun:'9.5KM (easy)', row:'Interval' },
+  { monRun:'7KM (easy)',   satRun:'10KM (easy)', row:'Standard 30 min' },
+  { monRun:'8KM interval*',satRun:'10KM (easy)', row:'Interval' },
+  { monRun:'8KM interval*',satRun:'10KM (easy)', row:'Standard 30 min' },
+  { monRun:'8KM interval*',satRun:'10KM (easy)', row:'Interval' },
+  { monRun:'8KM interval*',satRun:'10KM (easy)', row:'Standard 30 min' },
+  { monRun:'8KM interval*',satRun:'10KM (easy)', row:'Interval' }
+];
+const WED_RUN = '5KM (hard)';
+
+const WEIGHTS = {
+  chest: ['Incline dumbbell press', 'Flat dumbbell press', 'Dumbbell flys', 'Dumbbell pullover'],
+  legs: ['Goblet squats', 'Dumbbell Romanian deadlifts', 'Bulgarian split squats (rear foot on bench)', 'Dumbbell lunges (12 reps/leg)', 'Dumbbell step-ups (onto bench)'],
+  shoulders: ['Dumbbell shoulder press', 'Dumbbell lateral raises', 'Dumbbell front raises', 'Bent-over reverse flys', 'Overhead dumbbell tricep extension', 'Lying dumbbell tricep extension (on bench)'],
+  back: ['Single-arm dumbbell rows (bench-supported)', 'Bent-over dumbbell rows', 'Dumbbell pullover', 'Dumbbell bicep curls', 'Incline seated dumbbell curls', 'Hammer curls']
+};
+
+function planDayInfo(dateObj){
+  const start = new Date(WORKOUT_START + 'T00:00:00');
+  const diffDays = Math.floor((dateObj - start) / 86400000);
+  if(diffDays < 0) return null;
+  const week = Math.floor(diffDays / 7); // 0-indexed
+  if(week >= WORKOUT_WEEKS.length) return { done:true };
+  const dow = dateObj.getDay(); // 0=Sun..6=Sat
+  const w = WORKOUT_WEEKS[week];
+
+  const sessions = {
+    1: { label:'Chest + Run', run:w.monRun, lift:'chest' },
+    2: { label:'Legs', run:null, lift:'legs' },
+    3: { label:'Run', run:WED_RUN, lift:null },
+    4: { label:'Shoulders & Triceps + Row', run:null, lift:'shoulders', row:w.row },
+    5: { label:'Back & Biceps', run:null, lift:'back' },
+    6: { label:'Long run', run:w.satRun, lift:null },
+    0: { label:'Rest', run:null, lift:null }
+  };
+  return { week: week+1, dow, ...sessions[dow] };
+}
+
+function workoutKey(d){ return `together:workout:${d}`; }
+function loadWorkoutDay(d){
+  try{ return JSON.parse(localStorage.getItem(workoutKey(d))) || {}; }
+  catch(e){ return {}; }
+}
+function saveWorkoutDay(d, data){
+  localStorage.setItem(workoutKey(d), JSON.stringify(data));
+  // FIREBASE: mirror to users/{uid}/workoutLog/{date}
+}
+
+function renderWorkout(){
+  const now = new Date();
+  const info = planDayInfo(now);
+  const host = document.getElementById('workoutTodayHost');
+  const weekHost = document.getElementById('workoutWeekHost');
+  const label = document.getElementById('workoutWeekLabel');
+  const greet = document.getElementById('workoutGreeting');
+
+  if(!info){
+    label.textContent = 'Plan starts soon';
+    greet.textContent = 'Not started yet';
+    host.innerHTML = `<div class="card"><p class="empty">Plan begins ${new Date(WORKOUT_START).toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'long'})}.</p></div>`;
+    weekHost.innerHTML = '';
+    return;
+  }
+  if(info.done){
+    label.textContent = 'Complete';
+    greet.textContent = '10 weeks done 🎉';
+    host.innerHTML = `<div class="card"><p class="empty">You've finished the plan. Worth deciding what's next — repeat, progress the weights, or a new block.</p></div>`;
+    weekHost.innerHTML = '';
+    return;
+  }
+
+  label.textContent = `Week ${info.week} of 10`;
+  greet.textContent = info.label;
+
+  const d = todayStr();
+  const state = loadWorkoutDay(d);
+
+  let html = '<div class="card">';
+  if(info.dow === 0){
+    html += `<div class="rest-day">Rest day. Nothing to prove today.</div>`;
+  } else {
+    if(info.run){
+      html += `<div class="exercise-row"><div class="exercise-check ${state.run?'checked':''}" data-key="run">${state.run?'✓':''}</div><div class="exercise-label ${state.run?'checked':''}">Run: ${info.run}</div></div>`;
+    }
+    if(info.row){
+      html += `<div class="exercise-row"><div class="exercise-check ${state.row?'checked':''}" data-key="row">${state.row?'✓':''}</div><div class="exercise-label ${state.row?'checked':''}">Row: ${info.row}</div></div>`;
+    }
+    if(info.lift){
+      WEIGHTS[info.lift].forEach((ex, i) => {
+        const k = `lift${i}`;
+        const done = !!state[k];
+        html += `<div class="exercise-row"><div class="exercise-check ${done?'checked':''}" data-key="${k}">${done?'✓':''}</div><div class="exercise-label ${done?'checked':''}">${ex}</div></div>`;
+      });
+    }
+  }
+  html += '</div>';
+  host.innerHTML = html;
+
+  document.querySelectorAll('.exercise-check').forEach(chk=>{
+    chk.onclick = () => {
+      const key = chk.dataset.key;
+      const day = loadWorkoutDay(d);
+      day[key] = !day[key];
+      saveWorkoutDay(d, day);
+      renderWorkout();
+    };
+  });
+
+  // this week at a glance
+  const start = new Date(WORKOUT_START + 'T00:00:00');
+  const weekStart = new Date(start.getTime() + (info.week-1)*7*86400000);
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let wk = '<div class="card"><h2>This week</h2>';
+  for(let i=0;i<7;i++){
+    const dt = new Date(weekStart.getTime() + i*86400000);
+    const dInfo = planDayInfo(dt);
+    const isToday = dt.toDateString() === now.toDateString();
+    const summary = dInfo.dow===0 ? 'Rest' : dInfo.label + (dInfo.run ? ` — ${dInfo.run}` : '');
+    wk += `<div class="day-row ${isToday?'today':''}"><span class="d-name">${dayNames[dInfo.dow]}</span><span class="d-body">${summary}</span></div>`;
+  }
+  wk += '</div>';
+  weekHost.innerHTML = wk;
+}
 
 /* ---------- init ---------- */
 applySky();
