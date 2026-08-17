@@ -594,11 +594,16 @@ async function getResponse(text, ctx){
         habit: ctx.habit
       })
     });
-    if(!res.ok) throw new Error('bad response');
+    if(!res.ok){
+      const errText = await res.text().catch(()=> '');
+      console.error('togetherChat non-OK:', res.status, errText);
+      return `[fallback — HTTP ${res.status}: ${errText.slice(0,120)}] ` + respondToNote(text);
+    }
     const data = await res.json();
-    return data.reply || respondToNote(text);
+    return data.reply || (`[fallback — no reply field] ` + respondToNote(text));
   }catch(e){
-    return respondToNote(text); // network/deploy issue — canned fallback
+    console.error('togetherChat fetch error:', e);
+    return `[fallback — ${e.message}] ` + respondToNote(text);
   }
 }
 
