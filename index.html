@@ -595,15 +595,14 @@ async function getResponse(text, ctx){
       })
     });
     if(!res.ok){
-      const errText = await res.text().catch(()=> '');
-      console.error('togetherChat non-OK:', res.status, errText);
-      return `[fallback — HTTP ${res.status}: ${errText.slice(0,120)}] ` + respondToNote(text);
+      console.error('togetherChat non-OK:', res.status, await res.text().catch(()=>''));
+      return respondToNote(text);
     }
     const data = await res.json();
-    return data.reply || (`[fallback — no reply field] ` + respondToNote(text));
+    return data.reply || respondToNote(text);
   }catch(e){
     console.error('togetherChat fetch error:', e);
-    return `[fallback — ${e.message}] ` + respondToNote(text);
+    return respondToNote(text);
   }
 }
 
