@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Together</title>
+<meta name="theme-color" content="#4A4066">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* ---- token system ---- */
+    --dawn-1:#FFD9C7; --dawn-2:#FF9E80; --dawn-ink:#3A2A22;
+    --day-1:#FFF8EC;  --day-2:#FDE4C2;  --day-ink:#3A2E1F;
+    --dusk-1:#6C5B8C;  --dusk-2:#332B52; --dusk-ink:#F4EFE6;
+    --night-1:#1B1830; --night-2:#0F0D1E; --night-ink:#E8E3F0;
+
+    --coral:#E8795A;
+    --coral-dim:#c96448;
+    --sage:#8FA888;
+    --sand:#E9DFC9;
+
+    --sky-1: var(--day-1);
+    --sky-2: var(--day-2);
+    --ink: var(--day-ink);
+
+    --card-bg: rgba(255,255,255,0.62);
+    --card-border: rgba(255,255,255,0.9);
+    --radius: 22px;
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%;}
+  body{
+    font-family:'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color:var(--ink);
+    min-height:100dvh;
+    background:linear-gradient(160deg, var(--sky-1), var(--sky-2));
+    transition:background 2.5s ease, color 1s ease;
+    overflow-x:hidden;
+  }
+
+  .stars{
+    position:fixed; inset:0; z-index:0; opacity:0; transition:opacity 2.5s ease;
+    pointer-events:none;
+  }
+  .stars.show{opacity:1;}
+  .star{position:absolute; width:2px; height:2px; background:#fff; border-radius:50%; opacity:.7;}
+
+  .wrap{
+    position:relative; z-index:1;
+    max-width:480px; margin:0 auto;
+    padding:env(safe-area-inset-top,0) 20px calc(90px + env(safe-area-inset-bottom,0));
+    min-height:100dvh;
+  }
+
+  header.top{
+    padding:28px 0 8px;
+  }
+  .eyebrow{
+    font-size:13px; letter-spacing:.06em; text-transform:uppercase;
+    opacity:.65; font-weight:600;
+  }
+  h1.greeting{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-size:clamp(28px,7vw,36px);
+    line-height:1.15;
+    margin:6px 0 0;
+    letter-spacing:-0.01em;
+  }
+  .subline{
+    margin-top:8px; font-size:15px; opacity:.75; line-height:1.5;
+  }
+
+  /* ---- cards ---- */
+  .card{
+    background:var(--card-bg);
+    border:1px solid var(--card-border);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    border-radius:var(--radius);
+    padding:22px;
+    margin-top:18px;
+    box-shadow:0 8px 30px rgba(0,0,0,0.08);
+  }
+  .card h2{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-size:19px;
+    margin:0 0 14px;
+  }
+  .card .tag{
+    font-size:11px; text-transform:uppercase; letter-spacing:.08em;
+    font-weight:700; opacity:.55; margin-bottom:6px; display:block;
+  }
+
+  .moods{display:flex; gap:10px; margin-bottom:16px;}
+  .mood-btn{
+    flex:1; aspect-ratio:1; border-radius:16px; border:1.5px solid transparent;
+    background:rgba(255,255,255,0.5); font-size:22px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:transform .15s ease, border-color .15s ease, background .15s ease;
+  }
+  .mood-btn:active{transform:scale(0.92);}
+  .mood-btn.selected{
+    border-color:var(--coral); background:rgba(255,255,255,0.85);
+    transform:scale(1.05);
+  }
+
+  .toggle-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 0; border-top:1px solid rgba(0,0,0,0.08);
+  }
+  .toggle-row span{font-size:15px; font-weight:500;}
+  .switch{
+    width:46px; height:28px; border-radius:20px; background:rgba(0,0,0,0.15);
+    position:relative; cursor:pointer; flex-shrink:0; border:none; padding:0;
+  }
+  .switch::after{
+    content:''; position:absolute; top:3px; left:3px; width:22px; height:22px;
+    border-radius:50%; background:#fff; transition:transform .2s ease;
+    box-shadow:0 1px 3px rgba(0,0,0,0.3);
+  }
+  .switch.on{background:var(--sage);}
+  .switch.on::after{transform:translateX(18px);}
+
+  .note-toggle{
+    margin-top:14px; font-size:14px; font-weight:600; color:var(--coral-dim);
+    background:none; border:none; padding:0; cursor:pointer;
+  }
+  textarea.note{
+    width:100%; margin-top:10px; border-radius:14px; border:1px solid rgba(0,0,0,0.12);
+    background:rgba(255,255,255,0.6); padding:12px; font-family:inherit; font-size:14px;
+    resize:none; min-height:60px; display:none;
+  }
+  textarea.note.show{display:block;}
+
+  .thought{
+    font-size:14px; line-height:1.55; opacity:.85; font-style:italic;
+    padding:14px 16px; background:rgba(255,255,255,0.4); border-radius:14px;
+    margin-bottom:16px; border-left:3px solid var(--coral);
+  }
+
+  .recipe-link{
+    display:flex; align-items:center; gap:10px; margin-top:14px;
+    padding:12px 14px; background:rgba(255,255,255,0.55); border-radius:14px;
+    text-decoration:none; color:inherit; font-size:14px; font-weight:600;
+  }
+  .recipe-link .emoji{font-size:20px;}
+
+  .done-check{
+    margin-top:14px; font-size:13px; opacity:.6; display:flex; align-items:center; gap:6px;
+  }
+
+  .save-btn{
+    width:100%; margin-top:16px; padding:14px; border:none; border-radius:14px;
+    background:var(--coral); color:#fff; font-family:inherit; font-size:15px; font-weight:600;
+    cursor:pointer;
+  }
+  .save-btn:active{transform:scale(0.98);}
+
+  .response{
+    margin-top:14px; padding:14px 16px; border-radius:14px;
+    background:rgba(255,255,255,0.5); font-size:14px; line-height:1.5;
+    display:none; animation:fadeIn .3s ease;
+  }
+  .response.show{display:block;}
+  .response.loading{opacity:.55; font-style:italic;}
+
+  /* ---- snippet ---- */
+  .snippet{
+    background:var(--card-bg); border:1px solid var(--card-border);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border-radius:var(--radius); padding:18px 20px; margin-top:18px;
+    display:flex; gap:12px; align-items:flex-start;
+    text-decoration:none; color:inherit;
+  }
+  .snippet .emoji{font-size:22px; flex-shrink:0;}
+  .snippet .body{flex:1;}
+  .snippet .tag{margin-bottom:4px;}
+  .snippet .headline{font-size:14px; line-height:1.45; font-weight:600;}
+  .snippet .source{font-size:12px; opacity:.55; margin-top:4px;}
+  .snippet.linked:active{transform:scale(0.98);}
+
+  /* ---- support / encouragement ---- */
+  .support{
+    background:linear-gradient(135deg, rgba(143,168,136,0.28), rgba(143,168,136,0.12));
+    border:1px solid rgba(143,168,136,0.4);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border-radius:var(--radius); padding:20px; margin-top:18px;
+  }
+  .support .tag{color:var(--sage); opacity:.9;}
+  .support .headline{
+    font-family:'Fraunces', serif; font-weight:500; font-size:17px;
+    line-height:1.35; margin:4px 0 6px;
+  }
+  .support .why{font-size:13px; opacity:.7; line-height:1.5;}
+  .support-row{display:flex; gap:12px; align-items:flex-start;}
+  .support .emoji{font-size:24px; flex-shrink:0; margin-top:2px;}
+
+  /* ---- week view ---- */
+  .week-grid{display:flex; gap:8px; margin-top:16px;}
+  .week-day{
+    flex:1; text-align:center; display:flex; flex-direction:column; align-items:center; gap:6px;
+  }
+  .week-day .d{font-size:11px; opacity:.6; font-weight:600;}
+  .week-dot{width:30px; height:30px; border-radius:50%; background:rgba(0,0,0,0.08); font-size:15px;
+    display:flex; align-items:center; justify-content:center;}
+
+  /* ---- nav ---- */
+  nav.tabs{
+    position:fixed; bottom:0; left:0; right:0; z-index:2;
+    display:flex; justify-content:center;
+    padding-bottom:env(safe-area-inset-bottom,0);
+    background:linear-gradient(0deg, rgba(0,0,0,0.14), transparent);
+  }
+  .tabs-inner{
+    display:flex; gap:4px; margin:0 20px 14px; padding:6px;
+    background:rgba(255,255,255,0.7); backdrop-filter:blur(16px);
+    border-radius:20px; max-width:440px; width:100%;
+    box-shadow:0 6px 24px rgba(0,0,0,0.15);
+  }
+  .tab-btn{
+    flex:1; border:none; background:none; padding:10px 4px; border-radius:14px;
+    font-size:12px; font-weight:600; color:#5a5468; cursor:pointer;
+  }
+  .tab-btn.active{background:var(--coral); color:#fff;}
+
+  .screen{display:none;}
+  .screen.active{display:block; animation:fadeIn .3s ease;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .empty{
+    text-align:center; padding:40px 20px; opacity:.6; font-size:14px;
+  }
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+
+<div class="wrap">
+
+  <!-- TODAY -->
+  <div class="screen active" id="screen-today">
+    <header class="top">
+      <span class="eyebrow" id="dateLabel">—</span>
+      <h1 class="greeting" id="greeting">Hi.</h1>
+      <p class="subline" id="subline">One small thing at a time.</p>
+    </header>
+
+    <div id="cardsHost"></div>
+    <div id="supportHost"></div>
+    <div id="snippetHost"></div>
+  </div>
+
+  <!-- WEEK -->
+  <div class="screen" id="screen-week">
+    <header class="top">
+      <span class="eyebrow">This week</span>
+      <h1 class="greeting">The shape of it</h1>
+      <p class="subline">Not a scoreboard — just what happened.</p>
+    </header>
+    <div class="card">
+      <h2>Mood</h2>
+      <div class="week-grid" id="weekMood"></div>
+    </div>
+    <div class="card">
+      <h2>Check-ins completed</h2>
+      <div class="week-grid" id="weekCompletion"></div>
+    </div>
+  </div>
+
+</div>
+
+<nav class="tabs">
+  <div class="tabs-inner">
+    <button class="tab-btn active" data-screen="today">Today</button>
+    <button class="tab-btn" data-screen="week">Week</button>
+  </div>
+</nav>
+
+<script>
+/* =========================================================
+   TOGETHER — v1 (local-first)
+   Firebase hooks are marked with // FIREBASE: for the next pass.
+   Data model mirrors the intended Firestore shape:
+   users/{uid}/checkins/{date} = { morning:{}, midday:{}, evening:{} }
+   ========================================================= */
+
+const STORE_KEY = d => `together:checkins:${d}`;
+const todayStr = () => new Date().toISOString().slice(0,10);
+
+/* CLOUD FUNCTION: set this once togetherChat is deployed.
+   e.g. 'https://us-central1-YOUR-PROJECT.cloudfunctions.net/togetherChat' */
+const CLOUD_FUNCTION_URL = '';
+
+/* Placeholder uid until Firebase Auth is wired in — the Cloud Function
+   uses this to track the per-user daily limit. */
+function getUid(){
+  let uid = localStorage.getItem('together:uid');
+  if(!uid){
+    uid = 'local-' + Math.random().toString(36).slice(2);
+    localStorage.setItem('together:uid', uid);
+  }
+  return uid;
+}
+
+function loadDay(d){
+  try{ return JSON.parse(localStorage.getItem(STORE_KEY(d))) || {}; }
+  catch(e){ return {}; }
+}
+function saveDay(d, data){
+  localStorage.setItem(STORE_KEY(d), JSON.stringify(data));
+  // FIREBASE: mirror this write to
+  // setDoc(doc(db, 'users', uid, 'checkins', d), data, { merge: true })
+}
+
+/* ---------- time-of-day theming ---------- */
+function applySky(){
+  const h = new Date().getHours();
+  const root = document.documentElement.style;
+  const starsEl = document.getElementById('stars');
+  let s1,s2,ink,showStars=false;
+
+  if(h>=5 && h<9){ s1='var(--dawn-1)'; s2='var(--dawn-2)'; ink='var(--dawn-ink)'; }
+  else if(h>=9 && h<17){ s1='var(--day-1)'; s2='var(--day-2)'; ink='var(--day-ink)'; }
+  else if(h>=17 && h<21){ s1='var(--dusk-1)'; s2='var(--dusk-2)'; ink='var(--dusk-ink)'; }
+  else { s1='var(--night-1)'; s2='var(--night-2)'; ink='var(--night-ink)'; showStars=true; }
+
+  root.setProperty('--sky-1', s1);
+  root.setProperty('--sky-2', s2);
+  root.setProperty('--ink', ink);
+
+  const dark = showStars || (h>=17);
+  root.setProperty('--card-bg', dark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.62)');
+  root.setProperty('--card-border', dark ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.9)');
+
+  starsEl.classList.toggle('show', showStars);
+  if(showStars && !starsEl.dataset.built){
+    starsEl.dataset.built = '1';
+    for(let i=0;i<60;i++){
+      const s = document.createElement('div');
+      s.className='star';
+      s.style.left = Math.random()*100+'%';
+      s.style.top = Math.random()*70+'%';
+      s.style.opacity = (Math.random()*0.6+0.3).toFixed(2);
+      starsEl.appendChild(s);
+    }
+  }
+}
+
+/* ---------- greeting ---------- */
+function slotForNow(){
+  const h = new Date().getHours();
+  if(h<11) return 'morning';
+  if(h<17) return 'midday';
+  return 'evening';
+}
+function updateGreeting(){
+  const h = new Date().getHours();
+  const g = document.getElementById('greeting');
+  const s = document.getElementById('subline');
+  document.getElementById('dateLabel').textContent =
+    new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' });
+
+  if(h<11){ g.textContent='Morning.'; s.textContent='One small thing to carry into today.'; }
+  else if(h<17){ g.textContent='Afternoon.'; s.textContent='However it\u2019s going so far.'; }
+  else if(h<21){ g.textContent='Evening.'; s.textContent='How did today actually go?'; }
+  else { g.textContent='Late one.'; s.textContent='No pressure — just checking in.'; }
+}
+
+/* ---------- thoughts (rotating, static for now) ----------
+   FIREBASE / CLAUDE: replace pickThought() with a call to the
+   claudeProxy Cloud Function once that layer is built. */
+const THOUGHTS = [
+  "Small and repeatable beats big and occasional.",
+  "You don't have to feel motivated to take one small step.",
+  "Today only needs to be slightly better than nothing.",
+  "Rest is part of the plan, not a failure of it.",
+  "Notice what went right yesterday, even the small stuff."
+];
+function pickThought(){
+  const idx = new Date().getDate() % THOUGHTS.length;
+  return THOUGHTS[idx];
+}
+
+/* ---------- snippet (positive news / science / sport) ----------
+   RSS / CLOUD FUNCTION: this whole block gets replaced by a fetch to
+   your own Cloud Function, which rotates through:
+     - Positive News (positive.news/feed) + Reasons to be Cheerful
+     - BBC Science & Environment, filtered for tone by Claude
+     - BBC Sport: Swansea, Bradford, England cricket, Wales rugby
+   The function should cache "today's pick" per category so it's not
+   refetched per user. For now this rotates through static examples
+   so you can see where and how it sits in the UI. */
+const SNIPPETS = [
+  { emoji:'🌤️', tag:'Good news', headline:'A new wave of young birders is turning birdwatching into one of Britain\u2019s fastest-growing hobbies.', source:'Positive News', url:'https://www.positive.news/environment/conservation/birdwatching-takes-off-among-gen-z/' },
+  { emoji:'🔬', tag:'Science', headline:'Scientists have used AI to design brand new, functioning viruses for the first time.', source:'BBC Science', url:'https://www.bbc.co.uk/news/articles/c5y3j3ngevmo' },
+  { emoji:'⚽', tag:'Swansea City', headline:'Swansea head to the weekend fixture looking to build on last week\u2019s away form.', source:'BBC Sport', url:'https://www.bbc.co.uk/sport/football/teams/swansea-city' },
+  { emoji:'🌍', tag:'Good news', headline:'England is on track to become one of the first countries in the world to eliminate hepatitis C.', source:'BBC Health', url:'https://www.bbc.co.uk/news/articles/c75gk620r22o' },
+  { emoji:'🏏', tag:'England Cricket', headline:'England\u2019s middle order will be under scrutiny again in the next fixture.', source:'BBC Sport', url:'https://www.bbc.co.uk/sport/cricket' },
+  { emoji:'🏉', tag:'Wales Rugby', headline:'Wales look ahead to their next fixture with a settled matchday squad.', source:'BBC Sport', url:'https://www.bbc.co.uk/sport/rugby-union' },
+  { emoji:'🐦', tag:'Good news', headline:'Three sports groups are using movement to tackle isolation and build community.', source:'Positive News', url:'https://www.positive.news/lifestyle/sport/three-sports-groups-using-movement-to-tackle-isolation/' },
+  { emoji:'⚫', tag:'Bradford City', headline:'Bradford City continue their season with an eye on the table\u2019s upper half.', source:'BBC Sport', url:'https://www.bbc.co.uk/sport/football/teams/bradford-city' }
+];
+function renderSnippet(){
+  const host = document.getElementById('snippetHost');
+  const idx = new Date().getDate() % SNIPPETS.length;
+  const s = SNIPPETS[idx];
+  const tagName = s.url ? 'a' : 'div';
+  const attrs = s.url ? `href="${s.url}" target="_blank" rel="noopener"` : '';
+  host.innerHTML = `
+    <${tagName} class="snippet ${s.url?'linked':''}" ${attrs}>
+      <span class="emoji">${s.emoji}</span>
+      <div class="body">
+        <span class="tag">${s.tag}</span>
+        <div class="headline">${s.headline}</div>
+        <div class="source">${s.source} ${s.url?'· tap to read':''}</div>
+      </div>
+    </${tagName}>`;
+}
+
+/* ---------- support / encouragement ----------
+   The heart of the "more than a check-in" layer. One concrete,
+   specific nudge per time slot — a food swap, a movement idea, or
+   a mindset prompt — not generic advice. Rotates daily.
+   CLOUD FUNCTION: eventually this can be personalised by Claude
+   using the day's mood/habit state as context, same proxy pattern
+   as the note response. */
+const SUPPORT = {
+  morning: [
+    { emoji:'🚶', headline:'Try a 10-minute walk before you sit down to work.', why:'Movement before the day gets busy tends to actually happen — waiting for "later" often means never.' },
+    { emoji:'💧', headline:'Have a full glass of water before your first coffee.', why:'Easy to skip, and coffee alone doesn\u2019t rehydrate you after a night\u2019s sleep.' },
+    { emoji:'🪟', headline:'Open a window or step outside for two minutes.', why:'Daylight early in the day helps regulate mood and energy for the rest of it.' },
+    { emoji:'🧘', headline:'Take three slow breaths before you check your phone.', why:'A tiny pause before the day\u2019s noise starts can lower how reactive the rest of it feels.' }
+  ],
+  midday: [
+    { emoji:'🥗', headline:'Add one vegetable to whatever you\u2019re already having.', why:'Easier than a whole meal overhaul, and it adds up over a week.' },
+    { emoji:'🚫', headline:'If you\u2019re about to skip lunch, have something small instead of nothing.', why:'Skipping tends to lead to overeating later — a small bridge helps more than willpower does.' },
+    { emoji:'🍎', headline:'Swap one sugary drink today for water or something unsweetened.', why:'One swap, not a whole diet change — small and repeatable beats strict and short-lived.' },
+    { emoji:'🚶‍♂️', headline:'Take your next call standing up or walking.', why:'An easy way to add movement without carving out separate time for it.' }
+  ],
+  evening: [
+    { emoji:'📵', headline:'Put your phone in another room 30 minutes before bed.', why:'Small change, real effect on how easily the day actually winds down.' },
+    { emoji:'✍️', headline:'Name one thing that went okay today, even a small one.', why:'Not toxic positivity — just balancing out whatever the day\u2019s inner critic has been saying.' },
+    { emoji:'🧦', headline:'Lay out tomorrow\u2019s workout clothes or trainers, even if you\u2019re not sure you\u2019ll use them.', why:'Removes one small barrier for tomorrow-you, who\u2019ll have less energy to decide things.' },
+    { emoji:'🛁', headline:'Do one thing tonight purely because it\u2019s pleasant, not productive.', why:'Rest that isn\u2019t "earned" is still rest — and still needed.' }
+  ]
+};
+function renderSupport(){
+  const host = document.getElementById('supportHost');
+  const slot = slotForNow();
+  const list = SUPPORT[slot];
+  const idx = new Date().getDate() % list.length;
+  const s = list[idx];
+  host.innerHTML = `
+    <div class="support">
+      <span class="tag">Worth trying</span>
+      <div class="support-row">
+        <span class="emoji">${s.emoji}</span>
+        <div>
+          <div class="headline">${s.headline}</div>
+          <div class="why">${s.why}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ---------- canned note response ----------
+   CLOUD FUNCTION: replace respondToNote() with a call to claudeProxy,
+   passing the note text + today's other check-in state as context,
+   so the reply can be aware (e.g. "you mentioned skipping lunch"). */
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+const RESPONSES = {
+  empty: [
+    "Logged — no note needed, the mood and habit already say enough.",
+    "That's fine, not every check-in needs words. Saved."
+  ],
+  tired: [
+    "Sounds like a tired one. Nothing more needed today than what you've already done — that still counts.",
+    "Low energy days are still days. You showed up for this check-in, which is worth something on its own.",
+    "Worth going a bit easier on yourself for the rest of today, then. Rest is productive too."
+  ],
+  stress: [
+    "That's a lot to be carrying. Try the evening prompt below when you get to it — even one line can help unload it a bit.",
+    "Noted — stress like that tends to ease a little once it's written down somewhere, even briefly like this.",
+    "Sounds heavy. If it helps, one small thing today doesn't have to fix the whole day, just make the next hour a bit easier."
+  ],
+  good: [
+    "Good to hear — worth remembering this on a harder day, so it's saved here.",
+    "That's a genuinely good sign. Whatever you did today, it's working — keep noticing it.",
+    "Nice one. Small wins like this add up more than they feel like they do in the moment."
+  ],
+  skipped: [
+    "Noted. One missed thing doesn't undo the rest of the day — no need to make up for it, just carry on.",
+    "That happens. The point of this isn't a perfect streak, just an honest one.",
+    "Fair enough — tomorrow's a fresh slot, not a debt to repay."
+  ],
+  food: [
+    "Noted on the food front. If it helps, there's a quick recipe idea in the midday card for next time.",
+    "Got it. Food days vary a lot — what matters more is the pattern over a week, not any single meal."
+  ],
+  generic: [
+    "Got it — saved for today.",
+    "Noted, thanks for taking the moment to write it.",
+    "Logged. Every one of these adds a bit more shape to the week view."
+  ]
+};
+
+function respondToNote(text){
+  if(!text.trim()) return pick(RESPONSES.empty);
+  const lower = text.toLowerCase();
+  if(/tired|exhaust|knackered|shattered/.test(lower)) return pick(RESPONSES.tired);
+  if(/stress|anxious|overwhelm|worried/.test(lower)) return pick(RESPONSES.stress);
+  if(/good|great|proud|well done|happy/.test(lower)) return pick(RESPONSES.good);
+  if(/skip|missed|didn.?t|forgot/.test(lower)) return pick(RESPONSES.skipped);
+  if(/eat|food|meal|snack|lunch|dinner|breakfast/.test(lower)) return pick(RESPONSES.food);
+  return pick(RESPONSES.generic);
+}
+
+/* ---------- real Claude response, via the togetherChat Cloud Function ----------
+   Falls back to the local canned response if CLOUD_FUNCTION_URL isn't set yet,
+   or if the request fails (offline, not deployed, rate-limited), so the app
+   keeps working during local testing. */
+async function getResponse(text, ctx){
+  if(!CLOUD_FUNCTION_URL){
+    return respondToNote(text); // not deployed yet — canned fallback
+  }
+  try{
+    const res = await fetch(CLOUD_FUNCTION_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        uid: getUid(),
+        note: text,
+        slot: ctx.slot,
+        mood: ctx.mood,
+        habit: ctx.habit
+      })
+    });
+    if(!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    return data.reply || respondToNote(text);
+  }catch(e){
+    return respondToNote(text); // network/deploy issue — canned fallback
+  }
+}
+
+/* ---------- card definitions ---------- */
+const SLOTS = {
+  morning: {
+    label:'Morning check-in',
+    habit:'Moved a bit today?',
+    moods:['😔','😕','😐','🙂','😄']
+  },
+  midday: {
+    label:'Midday check-in',
+    habit:'Eaten something decent?',
+    moods:['😔','😕','😐','🙂','😄']
+  },
+  evening: {
+    label:'Evening check-in',
+    habit:'Overall, a decent day?',
+    moods:['😔','😕','😐','🙂','😄']
+  }
+};
+
+function renderCards(){
+  const host = document.getElementById('cardsHost');
+  host.innerHTML = '';
+  const d = todayStr();
+  const day = loadDay(d);
+  const slotKey = slotForNow();
+  const cfg = SLOTS[slotKey];
+  const state = day[slotKey] || { mood:null, habit:false, note:'', responded:false };
+
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  let inner = `<span class="tag">${cfg.label}</span><h2>Right now</h2>`;
+
+  if(slotKey === 'morning'){
+    inner += `<div class="thought">${pickThought()}</div>`;
+  }
+
+  inner += `<div class="moods" data-slot="${slotKey}">`;
+  cfg.moods.forEach(m => {
+    inner += `<button class="mood-btn ${state.mood===m?'selected':''}" data-mood="${m}">${m}</button>`;
+  });
+  inner += `</div>`;
+
+  inner += `
+    <div class="toggle-row">
+      <span>${cfg.habit}</span>
+      <button class="switch ${state.habit?'on':''}" data-slot="${slotKey}"></button>
+    </div>`;
+
+  if(slotKey === 'midday'){
+    inner += `<a class="recipe-link" href="https://recipeasypeasy.com" target="_blank" rel="noopener">
+      <span class="emoji">🍽️</span> See a quick recipe on Recipeasypeasy
+    </a>`;
+  }
+
+  inner += `<button class="note-toggle" data-slot="${slotKey}">${state.note ? 'Edit note' : '+ Add a line'}</button>
+    <textarea class="note ${state.note?'show':''}" data-slot="${slotKey}" placeholder="Anything you want to remember about right now\u2026">${state.note||''}</textarea>`;
+
+  inner += `<button class="save-btn" data-slot="${slotKey}">Save check-in</button>`;
+  inner += `<div class="response ${state.responded?'show':''}" id="response-${slotKey}">${state.responded ? (state.lastReply || '') : ''}</div>`;
+
+  card.innerHTML = inner;
+  host.appendChild(card);
+
+  wireCardEvents();
+}
+
+function wireCardEvents(){
+  document.querySelectorAll('.mood-btn').forEach(btn=>{
+    btn.onclick = () => {
+      const slot = btn.parentElement.dataset.slot;
+      const mood = btn.dataset.mood;
+      const d = todayStr();
+      const day = loadDay(d);
+      day[slot] = day[slot] || {};
+      day[slot].mood = mood;
+      saveDay(d, day);
+      renderCards();
+    };
+  });
+  document.querySelectorAll('.switch').forEach(sw=>{
+    sw.onclick = () => {
+      const slot = sw.dataset.slot;
+      const d = todayStr();
+      const day = loadDay(d);
+      day[slot] = day[slot] || {};
+      day[slot].habit = !day[slot].habit;
+      saveDay(d, day);
+      renderCards();
+    };
+  });
+  document.querySelectorAll('.note-toggle').forEach(btn=>{
+    btn.onclick = () => {
+      const slot = btn.dataset.slot;
+      const ta = document.querySelector(`textarea[data-slot="${slot}"]`);
+      ta.classList.toggle('show');
+      if(ta.classList.contains('show')) ta.focus();
+    };
+  });
+  document.querySelectorAll('textarea.note').forEach(ta=>{
+    ta.oninput = () => {
+      const slot = ta.dataset.slot;
+      const d = todayStr();
+      const day = loadDay(d);
+      day[slot] = day[slot] || {};
+      day[slot].note = ta.value;
+      saveDay(d, day);
+    };
+  });
+  document.querySelectorAll('.save-btn').forEach(btn=>{
+    btn.onclick = async () => {
+      const slot = btn.dataset.slot;
+      const d = todayStr();
+      const day = loadDay(d);
+      day[slot] = day[slot] || {};
+      day[slot].responded = true;
+      saveDay(d, day);
+
+      const resp = document.getElementById(`response-${slot}`);
+      resp.textContent = 'Thinking\u2026';
+      resp.classList.add('show','loading');
+
+      const reply = await getResponse(day[slot].note || '', {
+        slot, mood: day[slot].mood, habit: day[slot].habit
+      });
+
+      resp.classList.remove('loading');
+      resp.textContent = reply;
+
+      // cache the reply so re-rendering the card doesn't lose it or re-call the API
+      day[slot].lastReply = reply;
+      saveDay(d, day);
+    };
+  });
+}
+
+/* ---------- week view ---------- */
+function renderWeek(){
+  const moodHost = document.getElementById('weekMood');
+  const compHost = document.getElementById('weekCompletion');
+  moodHost.innerHTML = ''; compHost.innerHTML = '';
+
+  for(let i=6;i>=0;i--){
+    const dt = new Date();
+    dt.setDate(dt.getDate()-i);
+    const key = dt.toISOString().slice(0,10);
+    const day = loadDay(key);
+    const label = dt.toLocaleDateString('en-GB',{weekday:'narrow'});
+
+    const moods = ['morning','midday','evening'].map(s=>day[s]?.mood).filter(Boolean);
+    const lastMood = moods.length ? moods[moods.length-1] : '·';
+
+    const completed = ['morning','midday','evening'].filter(s=>day[s]?.mood).length;
+
+    moodHost.innerHTML += `<div class="week-day"><div class="week-dot">${lastMood}</div><div class="d">${label}</div></div>`;
+    compHost.innerHTML += `<div class="week-day"><div class="week-dot">${completed||'·'}</div><div class="d">${label}</div></div>`;
+  }
+}
+
+/* ---------- tab nav ---------- */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.onclick = () => {
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('screen-'+btn.dataset.screen).classList.add('active');
+    if(btn.dataset.screen === 'week') renderWeek();
+  };
+});
+
+/* ---------- init ---------- */
+applySky();
+updateGreeting();
+renderCards();
+renderSupport();
+renderSnippet();
+setInterval(applySky, 5*60*1000); // re-check every 5 min so the sky drifts through the day
+
+/* ---------- service worker ---------- */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
