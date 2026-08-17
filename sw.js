@@ -1,4 +1,4 @@
-const CACHE = 'together-v1';
+const CACHE = 'together-v2';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', e => {
@@ -16,9 +16,25 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
-  );
+  const isPage = e.request.mode === 'navigate' || e.request.destination === 'document';
+
+  if(isPage){
+    // network-first for the app shell — always try to get the latest
+    // version, only falling back to cache when actually offline
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+          return res;
+        })
+        .catch(() => caches.match(e.request))
+    );
+  } else {
+    // cache-first for other static assets (fonts, icons, etc.)
+    e.respondWith(
+      caches.match(e.request).then(cached => cached || fetch(e.request))
+    );
+  }
 });
 
 /* ---- FIREBASE / FCM: push handling goes here in the next pass ----
