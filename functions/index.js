@@ -15,13 +15,9 @@
 const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
-const { getFirestore } = require('firebase-admin/firestore');
 
 admin.initializeApp();
-// This project's Firestore database was created with the ID 'together'
-// rather than the default '(default)', so it needs to be referenced
-// explicitly — admin.firestore() alone would look for '(default)' and fail.
-const db = getFirestore('together');
+const db = admin.firestore();
 
 const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
 const DAILY_LIMIT = 40; // generous — this is one person's personal app
