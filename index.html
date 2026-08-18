@@ -580,7 +580,7 @@ function respondToNote(text){
    keeps working during local testing. */
 async function getResponse(text, ctx){
   if(!CLOUD_FUNCTION_URL){
-    return respondToNote(text); // not deployed yet — canned fallback
+    return '[LOCAL-ONLY] ' + respondToNote(text);
   }
   try{
     const res = await fetch(CLOUD_FUNCTION_URL, {
@@ -596,13 +596,13 @@ async function getResponse(text, ctx){
     });
     if(!res.ok){
       console.error('togetherChat non-OK:', res.status, await res.text().catch(()=>''));
-      return respondToNote(text);
+      return `[FALLBACK-${res.status}] ` + respondToNote(text);
     }
     const data = await res.json();
-    return data.reply || respondToNote(text);
+    return data.reply ? ('[CLAUDE] ' + data.reply) : ('[FALLBACK-no-reply] ' + respondToNote(text));
   }catch(e){
     console.error('togetherChat fetch error:', e);
-    return respondToNote(text);
+    return `[FALLBACK-${e.message}] ` + respondToNote(text);
   }
 }
 
