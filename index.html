@@ -580,7 +580,7 @@ function respondToNote(text){
    keeps working during local testing. */
 async function getResponse(text, ctx){
   if(!CLOUD_FUNCTION_URL){
-    return '[LOCAL-ONLY] ' + respondToNote(text);
+    return respondToNote(text);
   }
   try{
     const res = await fetch(CLOUD_FUNCTION_URL, {
@@ -596,13 +596,13 @@ async function getResponse(text, ctx){
     });
     if(!res.ok){
       console.error('togetherChat non-OK:', res.status, await res.text().catch(()=>''));
-      return `[FALLBACK-${res.status}] ` + respondToNote(text);
+      return respondToNote(text);
     }
     const data = await res.json();
-    return data.reply ? ('[CLAUDE] ' + data.reply) : ('[FALLBACK-no-reply] ' + respondToNote(text));
+    return data.reply || respondToNote(text);
   }catch(e){
     console.error('togetherChat fetch error:', e);
-    return `[FALLBACK-${e.message}] ` + respondToNote(text);
+    return respondToNote(text);
   }
 }
 
@@ -637,6 +637,33 @@ function renderCards(){
   const card = document.createElement('div');
   card.className = 'card';
 
+  if(state.responded){
+    // ---- locked / completed view — nothing left to overwrite ----
+    let inner = `<span class="tag">${cfg.label}</span><h2>Checked in</h2>`;
+    inner += `<div style="font-size:36px; margin-bottom:10px;">${state.mood || ''}</div>`;
+    inner += `<div class="toggle-row" style="border-top:none; padding-top:0;">
+      <span>${cfg.habit}</span>
+      <span style="font-weight:700; color:${state.habit ? 'var(--sage)' : 'inherit'}; opacity:${state.habit?1:.5}">${state.habit ? 'Yes' : 'Not this time'}</span>
+    </div>`;
+    if(state.note){
+      inner += `<div class="thought" style="margin-top:14px;">${state.note}</div>`;
+    }
+    if(state.lastReply){
+      inner += `<div class="response show">${state.lastReply}</div>`;
+    }
+    inner += `<button class="note-toggle" id="editCheckin" style="margin-top:14px;">Edit this check-in</button>`;
+    card.innerHTML = inner;
+    host.appendChild(card);
+
+    document.getElementById('editCheckin').onclick = () => {
+      const day2 = loadDay(d);
+      day2[slotKey].responded = false;
+      saveDay(d, day2);
+      renderCards();
+    };
+    return;
+  }
+
   let inner = `<span class="tag">${cfg.label}</span><h2>Right now</h2>`;
 
   if(slotKey === 'morning'){
@@ -665,7 +692,7 @@ function renderCards(){
     <textarea class="note ${state.note?'show':''}" data-slot="${slotKey}" placeholder="Anything you want to remember about right now\u2026">${state.note||''}</textarea>`;
 
   inner += `<button class="save-btn" data-slot="${slotKey}">Save check-in</button>`;
-  inner += `<div class="response ${state.responded?'show':''}" id="response-${slotKey}">${state.responded ? (state.lastReply || '') : ''}</div>`;
+  inner += `<div class="response" id="response-${slotKey}"></div>`;
 
   card.innerHTML = inner;
   host.appendChild(card);
@@ -724,6 +751,9 @@ function wireCardEvents(){
       day[slot].responded = true;
       saveDay(d, day);
 
+      btn.disabled = true;
+      btn.textContent = 'Saving\u2026';
+
       const resp = document.getElementById(`response-${slot}`);
       resp.textContent = 'Thinking\u2026';
       resp.classList.add('show','loading');
@@ -738,6 +768,14 @@ function wireCardEvents(){
       // cache the reply so re-rendering the card doesn't lose it or re-call the API
       day[slot].lastReply = reply;
       saveDay(d, day);
+
+      // give a moment to read the reply, then lock the card and move on —
+      // no lingering on an editable form that invites overwriting
+      setTimeout(() => {
+        renderCards(); // switches to the locked/completed view
+        const weekTab = document.querySelector('.tab-btn[data-screen="week"]');
+        if(weekTab) weekTab.click();
+      }, 1800);
     };
   });
 }
